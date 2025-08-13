@@ -1734,6 +1734,69 @@ class AWDInventoryStream(AmazonSellerStream):
 
             response = awd.list_inventory(details="SHOW", nextToken=next_token)
             inventory_items = response.payload.get("inventory", [])
+            
+class AccountStream(AmazonSellerStream):
+    """
+    Stream to fetch seller account information using:
+    GET /accounts/v1/account
+    Ref: https://developer-docs.amazon.com/sp-api/reference/getaccount
+    """
 
+    name = "account"
+    primary_keys = []  # No unique ID in response; adjust if needed
+    replication_key = None
 
+    schema = th.PropertiesList(
+        th.Property("businessType", th.StringType),
+        th.Property("sellingPlan", th.StringType),
+        th.Property("business", th.ObjectType(
+            th.Property("name", th.StringType),
+            th.Property("nonLatinName", th.StringType),
+            th.Property("companyRegistrationNumber", th.StringType),
+            th.Property("companyTaxIdentificationNumber", th.StringType),
+            th.Property("registeredBusinessAddress", th.ObjectType(
+                th.Property("addressLine1", th.StringType),
+                th.Property("addressLine2", th.StringType),
+                th.Property("city", th.StringType),
+                th.Property("stateOrProvinceCode", th.StringType),
+                th.Property("postalCode", th.StringType),
+                th.Property("countryCode", th.StringType),
+            ))
+        )),
+        th.Property("primaryContact", th.ObjectType(
+            th.Property("name", th.StringType),
+            th.Property("nonLatinName", th.StringType),
+            th.Property("address", th.ObjectType(
+                th.Property("addressLine1", th.StringType),
+                th.Property("addressLine2", th.StringType),
+                th.Property("city", th.StringType),
+                th.Property("stateOrProvinceCode", th.StringType),
+                th.Property("postalCode", th.StringType),
+                th.Property("countryCode", th.StringType),
+            ))
+        )),
+        th.Property("marketplaceParticipationList", th.ArrayType(th.ObjectType(
+            th.Property("storeName", th.StringType),
+            th.Property("marketplace", th.ObjectType(
+                th.Property("id", th.StringType),
+                th.Property("name", th.StringType),
+                th.Property("countryCode", th.StringType),
+                th.Property("domainName", th.StringType),
+            )),
+            th.Property("participation", th.ObjectType(
+                th.Property("isParticipating", th.BooleanType),
+                th.Property("hasSuspendedListings", th.BooleanType),
+            ))
+        )))
+    ).to_dict()
 
+    def get_records(self, context: Optional[dict]) -> Iterable[dict]:
+        """Yield the account payload as a single record."""
+        response = self.get_account_info()
+        yield response 
+
+    def get_account_info(self) -> dict:
+        """Call /accounts/v1/account endpoint using authenticated client."""
+        client = self.get_sp_sellers()  
+        response = client.get_account()
+        return response.payload 

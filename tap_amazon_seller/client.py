@@ -13,7 +13,8 @@ from sp_api.api import (
     VendorDirectFulfillmentShipping,
     VendorOrders,
     CatalogItems,
-    AmazonWarehousingAndDistribution
+    AmazonWarehousingAndDistribution,
+    Sellers
 )
 from sp_api.base import Marketplaces
 import csv
@@ -151,6 +152,9 @@ class AmazonSellerStream(Stream):
         return Orders(
             credentials=self.get_credentials(), marketplace=Marketplaces[marketplace_id]
         )
+    
+    def get_sp_sellers(self):
+        return Sellers(credentials=self.get_credentials())
 
     def get_sp_finance(self, marketplace_id=None):
         if marketplace_id is None:
