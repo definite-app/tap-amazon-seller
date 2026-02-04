@@ -1,5 +1,5 @@
 # tap-amazon-seller
-
+Forked from: https://gitlab.com/hotglue/tap-amazon-seller
 `tap-amazon-seller` is a Singer tap for Amazon-Seller.
 
 Built with the [Meltano Tap SDK](https://sdk.meltano.com) for Singer Taps.
