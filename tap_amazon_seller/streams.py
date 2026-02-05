@@ -1,6 +1,6 @@
 """Stream type classes for tap-amazon-seller."""
 from datetime import datetime, timedelta
-from typing import Iterable, Optional
+from typing import Any, Iterable, Optional
 
 import backoff
 from singer_sdk import typing as th
@@ -1233,7 +1233,7 @@ class AFNInventoryCountryStream(AmazonSellerStream):
     """Define custom stream."""
 
     name = "afn_inventory_country"
-    primary_keys = None
+    primary_keys = ["asin", "fulfillment-channel-sku", "country"]
     replication_key = None
     report_id = None
     document_id = None
@@ -1743,12 +1743,18 @@ class AccountStream(AmazonSellerStream):
     """
 
     name = "account"
-    primary_keys = []  # No unique ID in response; adjust if needed
+    primary_keys = [
+        "businessType",
+        "companyRegistrationNumber",
+        "companyTaxIdentificationNumber",
+    ]
     replication_key = None
 
     schema = th.PropertiesList(
         th.Property("businessType", th.StringType),
         th.Property("sellingPlan", th.StringType),
+        th.Property("companyRegistrationNumber", th.StringType),
+        th.Property("companyTaxIdentificationNumber", th.StringType),
         th.Property("business", th.ObjectType(
             th.Property("name", th.StringType),
             th.Property("nonLatinName", th.StringType),
@@ -1793,10 +1799,23 @@ class AccountStream(AmazonSellerStream):
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         """Yield the account payload as a single record."""
         response = self.get_account_info()
-        yield response 
+        response = self._post_process(response)
+        yield response
+
+    def _post_process(self, row: dict, context: Optional[dict] = None) -> dict:
+        """Flatten nested business identifiers to top-level."""
+        self.logger.info(f"Post-processing row: {row}")
+        business = row.get("business") or {}
+        row["companyRegistrationNumber"] = business.get(
+            "companyRegistrationNumber"
+        )
+        row["companyTaxIdentificationNumber"] = business.get(
+            "companyTaxIdentificationNumber"
+        )
+        return row
 
     def get_account_info(self) -> dict:
         """Call /accounts/v1/account endpoint using authenticated client."""
         client = self.get_sp_sellers()  
         response = client.get_account()
-        return response.payload 
+        return response.payload
