@@ -4,6 +4,7 @@
 from typing import Any, List, Optional, cast
 
 from singer_sdk.streams import Stream
+from sp_api.base.exceptions import SellingApiForbiddenException
 from sp_api.api import (
     Finances,
     Inventories,
@@ -103,6 +104,14 @@ def get_state_partitions_list(
 class AmazonSellerStream(Stream):
     """Stream class for Amazon-Seller streams."""
     backoff_retries = 0
+
+    def sync(self, *args, **kwargs):
+        try:
+            return super().sync(*args, **kwargs)
+        except SellingApiForbiddenException as e:
+            self.logger.warning(
+                f"Skipping stream '{self.name}' due to Forbidden error: {e}"
+            )
 
     def _write_state_message(self) -> None:
         """Write out a STATE message with the latest state."""
