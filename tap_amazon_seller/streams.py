@@ -766,10 +766,12 @@ class WarehouseInventory(AmazonSellerStream):
                 if "inventorySummaries" in row:
                     if len(row["inventorySummaries"]) > 0:
                         for summary in row["inventorySummaries"]:
+                            if not summary.get("lastUpdatedTime"):
+                                summary["lastUpdatedTime"] = None
                             return_row.update(summary)
                             yield return_row
                 else:
-                    return_row.update({"lastUpdatedTime": ""})
+                    return_row.update({"lastUpdatedTime": None})
             else:
                 yield return_row
 
