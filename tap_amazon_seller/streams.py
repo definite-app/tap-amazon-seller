@@ -1016,7 +1016,7 @@ class VendorFulfilmentPurchaseOrdersStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=2,
         factor=3,
     )
     @timeout(15)
@@ -1074,6 +1074,8 @@ class VendorFulfilmentPurchaseOrdersStream(AmazonSellerStream):
 
 class VendorFulfilmentCustomerInvoicesStream(AmazonSellerStream):
     """Define custom stream."""
+    # TODO: this stream is not working as expected. It seems to grabbing data afor shipping labels, not invoices.
+    # Also load_all_orders method is not working. See note below.
 
     name = "vendor_fulfilment_customer_invoices"
     primary_keys = ["purchaseOrderNumber"]
@@ -1104,7 +1106,7 @@ class VendorFulfilmentCustomerInvoicesStream(AmazonSellerStream):
         a generator function to return all pages, obtained by NextToken
         """
         vendor_shipping = self.get_sp_vendor_fulfilment_shipping(mp)
-        invoices_obj = vendor_shipping.get_orders(**kwargs)
+        invoices_obj = vendor_shipping.get_orders(**kwargs) # this method does not exist for VendorDirectFulfillmentOrders
         return invoices_obj
 
     def load_order_page(self, mp, **kwargs):
