@@ -35,7 +35,7 @@ class MarketplacesStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         Exception,
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -184,7 +184,7 @@ class OrdersStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -226,7 +226,7 @@ class OrdersStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -365,7 +365,7 @@ class OrderItemsStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -407,7 +407,7 @@ class OrderBuyerInfo(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -455,7 +455,7 @@ class OrderAddress(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -568,7 +568,7 @@ class OrderFinancialEvents(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -626,7 +626,7 @@ class ReportsStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -702,7 +702,7 @@ class WarehouseInventory(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -750,7 +750,7 @@ class WarehouseInventory(AmazonSellerStream):
             
     
 
-    @backoff.on_exception(backoff.expo, (Exception), max_tries=10, factor=3)
+    @backoff.on_exception(backoff.expo, (Exception), max_tries=5, factor=3)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         six_months_ago = datetime.today() - relativedelta(months=18)
         start_date = self.get_starting_timestamp(context) or six_months_ago
@@ -870,7 +870,7 @@ class ProductsIventoryStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -952,7 +952,7 @@ class ProductDetails(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -1016,7 +1016,7 @@ class VendorFulfilmentPurchaseOrdersStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=2,
         factor=3,
     )
     @timeout(15)
@@ -1043,7 +1043,7 @@ class VendorFulfilmentPurchaseOrdersStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1074,6 +1074,8 @@ class VendorFulfilmentPurchaseOrdersStream(AmazonSellerStream):
 
 class VendorFulfilmentCustomerInvoicesStream(AmazonSellerStream):
     """Define custom stream."""
+    # TODO: this stream is not working as expected. It seems to grabbing data afor shipping labels, not invoices.
+    # Also load_all_orders method is not working. See note below.
 
     name = "vendor_fulfilment_customer_invoices"
     primary_keys = ["purchaseOrderNumber"]
@@ -1095,7 +1097,7 @@ class VendorFulfilmentCustomerInvoicesStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -1104,7 +1106,7 @@ class VendorFulfilmentCustomerInvoicesStream(AmazonSellerStream):
         a generator function to return all pages, obtained by NextToken
         """
         vendor_shipping = self.get_sp_vendor_fulfilment_shipping(mp)
-        invoices_obj = vendor_shipping.get_orders(**kwargs)
+        invoices_obj = vendor_shipping.get_orders(**kwargs) # this method does not exist for VendorDirectFulfillmentOrders
         return invoices_obj
 
     def load_order_page(self, mp, **kwargs):
@@ -1122,7 +1124,7 @@ class VendorFulfilmentCustomerInvoicesStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1174,7 +1176,7 @@ class VendorPurchaseOrdersStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -1201,7 +1203,7 @@ class VendorPurchaseOrdersStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1266,7 +1268,7 @@ class AFNInventoryCountryStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     # @timeout(15)
@@ -1361,7 +1363,7 @@ class SalesTrafficReportStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=5,
     )
     # @timeout(15)
@@ -1454,7 +1456,7 @@ class FBAInventoryLedgerDetailedReportStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=5,
     )
     # @timeout(15)
@@ -1558,7 +1560,7 @@ class FBACustomerShipmentSalesReportStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=5,
     )
     # @timeout(15)
@@ -1645,7 +1647,7 @@ class ProductDetailsV2Stream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
@@ -1706,7 +1708,7 @@ class AWDInventoryStream(AmazonSellerStream):
     @backoff.on_exception(
         backoff.expo,
         (Exception),
-        max_tries=10,
+        max_tries=5,
         factor=3,
     )
     @timeout(15)
