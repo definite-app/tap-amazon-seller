@@ -272,6 +272,7 @@ class AmazonSellerStream(Stream):
         if os.path.isfile(file):
             with open(file) as data:
                 data_reader = json.load(data)
+                data_reader["reportId"] = self.report_id
                 finalList = [data_reader]
             os.remove(file)
         return finalList
