@@ -593,7 +593,7 @@ class ReportsStream(AmazonSellerStream):
     """Define custom stream."""
 
     name = "reports"
-    primary_keys = ["reportId"]
+    primary_keys = None # no unique id in response, will be append only in the target table
     replication_key = None
     report_id = None
     document_id = None
@@ -601,6 +601,7 @@ class ReportsStream(AmazonSellerStream):
         th.Property("marketplaceIds", th.CustomType({"type": ["array", "string"]})),
         th.Property("reportId", th.StringType),
         th.Property("Date", th.DateTimeType),
+        th.Property("Date and Time", th.DateTimeType),
         th.Property("FNSKU", th.StringType),
         th.Property("ASIN", th.StringType),
         th.Property("MSKU", th.StringType),
@@ -612,6 +613,9 @@ class ReportsStream(AmazonSellerStream):
         th.Property("Disposition", th.StringType),
         th.Property("Reason", th.StringType),
         th.Property("Country", th.StringType),
+        th.Property("Store", th.StringType),
+        th.Property("Reconciled Quantity", th.StringType),
+        th.Property("Unreconciled Quantity", th.StringType),
         # th.Property("reportType", th.StringType),
         # th.Property("dataStartTime", th.DateTimeType),
         # th.Property("dataEndTime", th.DateTimeType),
@@ -665,12 +669,18 @@ class ReportsStream(AmazonSellerStream):
             self.logger.info(f"Creating new report. StartDate:{start_date}, EndDate: {end_date}, ReportName:{self.name}")
             reports = self.create_report(start_date, report, end_date)
             for row in reports:
+                if "Date" in row and "/" in str(row["Date"]):
+                    date_object = datetime.strptime(row["Date"], "%m/%d/%Y")
+                    row["Date"] = date_object.date().isoformat()
                 yield row
 
         # If reports are form loop through, download documents and populate the data.txt
         for row in items["reports"]:
             reports = self.check_report(row["reportId"], report)
             for report_row in reports:
+                if "Date" in report_row and "/" in str(report_row["Date"]):
+                    date_object = datetime.strptime(report_row["Date"], "%m/%d/%Y")
+                    report_row["Date"] = date_object.date().isoformat()
                 yield report_row
 
 
@@ -1342,7 +1352,7 @@ class SalesTrafficReportStream(AmazonSellerStream):
     """Define custom stream."""
 
     name = "sales_traffic_report"
-    primary_keys = ["reportId"]
+    primary_keys = None # no unique id in response, will be append only in the target table
     replication_key = "report_end_date"
     report_id = None
     document_id = None
