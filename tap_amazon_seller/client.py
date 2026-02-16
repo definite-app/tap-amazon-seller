@@ -33,6 +33,11 @@ from tap_amazon_seller.amz_objects import CatalogItems_v2
 ROOT_DIR = os.environ.get("ROOT_DIR", ".")
 
 
+def _giveup_on_forbidden(e):
+    """Give up retrying if the exception is a SellingApiForbiddenException."""
+    return isinstance(e, SellingApiForbiddenException)
+
+
 def _find_in_partitions_list(
     partitions: List[dict], state_partition_context: dict
 ) -> Optional[dict]:
@@ -104,11 +109,15 @@ def get_state_partitions_list(
 class AmazonSellerStream(Stream):
     """Stream class for Amazon-Seller streams."""
     backoff_retries = 0
+    _stream_forbidden = False
 
     def sync(self, *args, **kwargs):
+        if self._stream_forbidden:
+            return
         try:
             return super().sync(*args, **kwargs)
         except SellingApiForbiddenException as e:
+            self._stream_forbidden = True
             self.logger.warning(
                 f"Skipping stream '{self.name}' due to Forbidden error: {e}"
             )
@@ -194,6 +203,7 @@ class AmazonSellerStream(Stream):
         (Exception),
         max_tries=10,
         factor=5,
+        giveup=_giveup_on_forbidden,
     )
     def create_report(
         self,
@@ -233,6 +243,7 @@ class AmazonSellerStream(Stream):
         (Exception),
         max_tries=10,
         factor=5,
+        giveup=_giveup_on_forbidden,
     )
     def get_report(self, report_id, reports):
         return reports.get_report(report_id)
@@ -242,6 +253,7 @@ class AmazonSellerStream(Stream):
         (Exception),
         max_tries=10,
         factor=5,
+        giveup=_giveup_on_forbidden,
     )
     def save_document(self, document_id, reports, report_type="csv"):
         res = reports.get_report_document(
@@ -421,6 +433,7 @@ class AmazonSellerStream(Stream):
         (Exception),
         max_tries=10,
         factor=5,
+        giveup=_giveup_on_forbidden,
     )
     def get_reports_list(
         self, reports, report_types, processing_status, start_date_f, end_date_f
