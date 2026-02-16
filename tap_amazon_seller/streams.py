@@ -6,7 +6,7 @@ import backoff
 from singer_sdk import typing as th
 from sp_api.util import load_all_pages
 
-from tap_amazon_seller.client import AmazonSellerStream
+from tap_amazon_seller.client import AmazonSellerStream, _giveup_on_forbidden
 from tap_amazon_seller.utils import InvalidResponse, timeout
 from sp_api.base.exceptions import SellingApiServerException,SellingApiNotFoundException, SellingApiBadRequestException
 from dateutil.relativedelta import relativedelta
@@ -37,6 +37,7 @@ class MarketplacesStream(AmazonSellerStream):
         Exception,
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -186,6 +187,7 @@ class OrdersStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def load_all_orders(self, mp, **kwargs):
@@ -228,6 +230,7 @@ class OrdersStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         # Get start_date
@@ -367,6 +370,7 @@ class OrderItemsStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -409,6 +413,7 @@ class OrderBuyerInfo(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -457,6 +462,7 @@ class OrderAddress(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -570,6 +576,7 @@ class OrderFinancialEvents(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -632,6 +639,7 @@ class ReportsStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -714,6 +722,7 @@ class WarehouseInventory(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def load_all_items(self, mp, **kwargs):
@@ -760,7 +769,7 @@ class WarehouseInventory(AmazonSellerStream):
             
     
 
-    @backoff.on_exception(backoff.expo, (Exception), max_tries=10, factor=3)
+    @backoff.on_exception(backoff.expo, (Exception), max_tries=10, factor=3, giveup=_giveup_on_forbidden)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         six_months_ago = datetime.today() - relativedelta(months=18)
         start_date = self.get_starting_timestamp(context) or six_months_ago
@@ -882,6 +891,7 @@ class ProductsIventoryStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -964,6 +974,7 @@ class ProductDetails(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1028,6 +1039,7 @@ class VendorFulfilmentPurchaseOrdersStream(AmazonSellerStream):
         (Exception),
         max_tries=2,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def load_all_orders(self, mp, **kwargs):
@@ -1055,6 +1067,7 @@ class VendorFulfilmentPurchaseOrdersStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         # Get start_date
@@ -1109,6 +1122,7 @@ class VendorFulfilmentCustomerInvoicesStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def load_all_orders(self, mp, **kwargs):
@@ -1136,6 +1150,7 @@ class VendorFulfilmentCustomerInvoicesStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         # Get start_date
@@ -1188,6 +1203,7 @@ class VendorPurchaseOrdersStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def load_all_orders(self, mp, **kwargs):
@@ -1215,6 +1231,7 @@ class VendorPurchaseOrdersStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         # Get start_date
@@ -1280,6 +1297,7 @@ class AFNInventoryCountryStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     # @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1375,6 +1393,7 @@ class SalesTrafficReportStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=5,
+        giveup=_giveup_on_forbidden,
     )
     # @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1468,6 +1487,7 @@ class FBAInventoryLedgerDetailedReportStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=5,
+        giveup=_giveup_on_forbidden,
     )
     # @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1572,6 +1592,7 @@ class FBACustomerShipmentSalesReportStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=5,
+        giveup=_giveup_on_forbidden,
     )
     # @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1659,6 +1680,7 @@ class ProductDetailsV2Stream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
@@ -1720,6 +1742,7 @@ class AWDInventoryStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
