@@ -181,6 +181,10 @@ class OrdersStream(AmazonSellerStream):
         ),
     ).to_dict()
 
+    @property
+    def is_sorted(self) -> bool:
+        return True
+
     @load_all_pages()
     @backoff.on_exception(
         backoff.expo,
