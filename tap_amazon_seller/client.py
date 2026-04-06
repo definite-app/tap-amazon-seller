@@ -74,6 +74,7 @@ def get_state_if_exists(
         "orderbuyerinfo",
         "orderaddress",
         "orderfinancialevents",
+        "settlement_financial_events",
     ]
     stream_state = tap_state["bookmarks"][tap_stream_id]
     if tap_stream_id in skip_incremental_partitions and "partitions" in stream_state and len(stream_state["partitions"]) != 0:
@@ -132,6 +133,7 @@ class AmazonSellerStream(Stream):
                     "orderbuyerinfo",
                     "orderaddress",
                     "orderfinancialevents",
+                    "settlement_financial_events",
                     "warehouse_inventory",
                     "products_inventory",
                     "product_details",

@@ -16,18 +16,26 @@ pipx install tap-amazon-seller
 
 ### Accepted Config Options
 
-- [ ] `Developer TODO:` Provide a list of config options accepted by the tap.
+| Setting | Type | Required | Default | Description |
+|---------|------|----------|---------|-------------|
+| `lwa_client_id` | string | Yes | — | Login with Amazon (LWA) client ID for SP-API authentication |
+| `client_secret` | string | Yes | — | LWA client secret |
+| `refresh_token` | string | Yes | — | LWA OAuth refresh token |
+| `aws_access_key` | string | No | — | AWS IAM access key (for role-based auth) |
+| `aws_secret_key` | string | No | — | AWS IAM secret key (for role-based auth) |
+| `role_arn` | string | No | — | AWS IAM role ARN to assume for SP-API access |
+| `sandbox` | boolean | No | `false` | Use SP-API sandbox environment for testing |
+| `marketplaces` | array/string | No | All 20 supported | List of marketplace IDs to sync (e.g. `["US", "CA"]`) |
+| `report_types` | array/string | No | `["GET_LEDGER_DETAIL_VIEW_DATA", "GET_MERCHANT_LISTINGS_ALL_DATA"]` | SP-API report types to request |
+| `processing_status` | array/string | No | `["IN_QUEUE", "IN_PROGRESS"]` | Report processing statuses to filter on |
 
-A full list of supported settings and capabilities for this
-tap is available by running:
+### Known API Behavior
 
-```bash
-tap-amazon-seller --about
-```
+- **`financial_event_groups` stream:** The Amazon SP-API `listFinancialEventGroups` endpoint ignores the `FinancialEventGroupStartedAfter` date filter for Open settlement groups — they are always returned regardless of the date parameter. This means the stream may return groups older than the bookmark on incremental syncs. This is expected behavior; the data is merged/upserted downstream.
 
 ### Source Authentication and Authorization
 
-- [ ] `Developer TODO:` If your tap requires special access on the source system, or any special authentication requirements, provide those here.
+This tap authenticates via Amazon's Login with Amazon (LWA) OAuth flow. You need an SP-API application registered in Seller Central with the required API permissions. Provide `lwa_client_id`, `client_secret`, and `refresh_token`. Optionally use IAM role-based auth with `aws_access_key`, `aws_secret_key`, and `role_arn`.
 
 ## Usage
 
