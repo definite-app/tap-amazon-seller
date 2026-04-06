@@ -671,7 +671,7 @@ class FinancialEventGroupsStream(AmazonSellerStream):
             start_date = datetime.utcnow() - relativedelta(months=18)
         start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
 
-        self.logger.warning(
+        self.logger.info(
             f"Fetching financial event groups for marketplace {marketplace_id} "
             f"starting after {start_date_str}"
         )
