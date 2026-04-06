@@ -600,6 +600,303 @@ class OrderFinancialEvents(AmazonSellerStream):
         return [items["FinancialEvents"]]
 
 
+class FinancialEventGroupsStream(AmazonSellerStream):
+    """Stream for financial event groups (settlement periods)."""
+
+    name = "financial_event_groups"
+    primary_keys = ["FinancialEventGroupId"]
+    replication_key = "FinancialEventGroupStart"
+    parent_stream_type = MarketplacesStream
+
+    schema = th.PropertiesList(
+        th.Property("FinancialEventGroupId", th.StringType),
+        th.Property("ProcessingStatus", th.StringType),
+        th.Property("FundTransferStatus", th.StringType),
+        th.Property(
+            "OriginalTotal",
+            th.ObjectType(
+                th.Property("CurrencyCode", th.StringType),
+                th.Property("CurrencyAmount", th.NumberType),
+            ),
+        ),
+        th.Property(
+            "ConvertedTotal",
+            th.ObjectType(
+                th.Property("CurrencyCode", th.StringType),
+                th.Property("CurrencyAmount", th.NumberType),
+            ),
+        ),
+        th.Property("FundTransferDate", th.DateTimeType),
+        th.Property("TraceId", th.StringType),
+        th.Property("AccountTail", th.StringType),
+        th.Property(
+            "BeginningBalance",
+            th.ObjectType(
+                th.Property("CurrencyCode", th.StringType),
+                th.Property("CurrencyAmount", th.NumberType),
+            ),
+        ),
+        th.Property("FinancialEventGroupStart", th.DateTimeType),
+        th.Property("FinancialEventGroupEnd", th.DateTimeType),
+        th.Property("marketplace_id", th.StringType),
+    ).to_dict()
+
+    @property
+    def is_sorted(self) -> bool:
+        return False
+
+    def get_child_context(self, record: dict, context: Optional[dict]) -> dict:
+        return {
+            "FinancialEventGroupId": record["FinancialEventGroupId"],
+            "marketplace_id": context.get("marketplace_id"),
+        }
+
+    @backoff.on_exception(
+        backoff.expo,
+        (Exception),
+        max_tries=10,
+        factor=3,
+        giveup=_giveup_on_forbidden,
+    )
+    @timeout(15)
+    def _fetch_event_groups_page(self, finance, **kwargs):
+        return finance.list_financial_event_groups(**kwargs)
+
+    def get_records(self, context: Optional[dict]) -> Iterable[dict]:
+        marketplace_id = context.get("marketplace_id")
+        finance = self.get_sp_finance(marketplace_id)
+
+        start_date = self.get_starting_timestamp(context)
+        if start_date is None:
+            start_date = datetime.utcnow() - relativedelta(months=18)
+        start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
+
+        self.logger.info(
+            f"Fetching financial event groups for marketplace {marketplace_id} "
+            f"starting after {start_date_str}"
+        )
+
+        response = self._fetch_event_groups_page(
+            finance,
+            FinancialEventGroupStartedAfter=start_date_str,
+            MaxResultsPerPage=100,
+        )
+
+        while True:
+            groups = response.payload.get("FinancialEventGroupList", [])
+            for group in groups:
+                group["marketplace_id"] = marketplace_id
+                yield group
+
+            next_token = response.next_token
+            if not next_token:
+                break
+
+            response = self._fetch_event_groups_page(
+                finance,
+                NextToken=next_token,
+                MaxResultsPerPage=100,
+            )
+
+
+class SettlementFinancialEventsStream(AmazonSellerStream):
+    """Stream for financial events within a settlement period."""
+
+    name = "settlement_financial_events"
+    primary_keys = ["FinancialEventGroupId"]
+    replication_key = None
+    parent_stream_type = FinancialEventGroupsStream
+
+    schema = th.PropertiesList(
+        th.Property("FinancialEventGroupId", th.StringType),
+        th.Property("marketplace_id", th.StringType),
+        th.Property(
+            "ShipmentEventList", th.CustomType({"type": ["array", "string"]})
+        ),
+        th.Property(
+            "ShipmentSettleEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "RefundEventList", th.CustomType({"type": ["array", "string"]})
+        ),
+        th.Property(
+            "GuaranteeClaimEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "ChargebackEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "PayWithAmazonEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "ServiceProviderCreditEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "RetrochargeEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "RentalTransactionEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "ProductAdsPaymentEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "ServiceFeeEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "SellerDealPaymentEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "DebtRecoveryEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "LoanServicingEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "AdjustmentEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "SAFETReimbursementEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "SellerReviewEnrollmentPaymentEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "FBALiquidationEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "CouponPaymentEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "ImagingServicesFeeEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "NetworkComminglingTransactionEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "AffordabilityExpenseEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "AffordabilityExpenseReversalEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "TrialShipmentEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "TaxWithholdingEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "RemovalShipmentEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "RemovalShipmentAdjustmentEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "EBTRefundReimbursementOnlyEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "CapacityReservationBillingEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "AdhocDisbursementEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "FailedAdhocDisbursementEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "TDSReimbursementEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "ValueAddedServiceChargeEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+        th.Property(
+            "ChargeRefundEventList",
+            th.CustomType({"type": ["array", "string"]}),
+        ),
+    ).to_dict()
+
+    @backoff.on_exception(
+        backoff.expo,
+        (Exception),
+        max_tries=10,
+        factor=3,
+        giveup=_giveup_on_forbidden,
+    )
+    @timeout(15)
+    def _fetch_financial_events_page(self, finance, group_id, **kwargs):
+        return finance.list_financial_events_by_group_id(group_id, **kwargs)
+
+    def get_records(self, context: Optional[dict]) -> Iterable[dict]:
+        group_id = context.get("FinancialEventGroupId")
+        marketplace_id = context.get("marketplace_id")
+        finance = self.get_sp_finance(marketplace_id)
+
+        self.logger.info(
+            f"Fetching settlement financial events for group {group_id}"
+        )
+
+        aggregated_events = {}
+
+        response = self._fetch_financial_events_page(
+            finance, group_id, MaxResultsPerPage=100
+        )
+
+        while True:
+            financial_events = response.payload.get("FinancialEvents", {})
+
+            for key, value in financial_events.items():
+                if isinstance(value, list):
+                    if key not in aggregated_events:
+                        aggregated_events[key] = []
+                    aggregated_events[key].extend(value)
+
+            next_token = response.next_token
+            if not next_token:
+                break
+
+            response = self._fetch_financial_events_page(
+                finance, group_id, NextToken=next_token, MaxResultsPerPage=100
+            )
+
+        record = {
+            "FinancialEventGroupId": group_id,
+            "marketplace_id": marketplace_id,
+        }
+        record.update(aggregated_events)
+        yield record
+
+
 class ReportsStream(AmazonSellerStream):
     """Define custom stream."""
 

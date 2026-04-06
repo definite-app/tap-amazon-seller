@@ -52,6 +52,9 @@ tap_amazon_seller/
 - `SellingApiForbiddenException` is caught and streams are skipped gracefully
 - State management uses bookmark partitions for incremental replication
 
+## Known SP-API Quirks
+- `listFinancialEventGroups`: The `FinancialEventGroupStartedAfter` date filter only applies to Closed groups. Open groups are always returned regardless of the date filter. This means the `financial_event_groups` stream may return groups older than the bookmark on every sync, which is expected — data is merged downstream.
+
 ## Code Style
 - Black formatting (88 char line limit)
 - isort for import ordering
