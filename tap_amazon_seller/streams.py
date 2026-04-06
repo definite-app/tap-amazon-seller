@@ -668,7 +668,7 @@ class FinancialEventGroupsStream(AmazonSellerStream):
 
         start_date = self.get_starting_timestamp(context)
         if start_date is None:
-            start_date = datetime.utcnow() - relativedelta(months=18)
+            start_date = datetime.utcnow() - relativedelta(months=12)
         start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
 
         self.logger.info(
