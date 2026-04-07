@@ -32,6 +32,7 @@ pipx install tap-amazon-seller
 ### Known API Behavior
 
 - **`financial_event_groups` stream:** The Amazon SP-API `listFinancialEventGroups` endpoint ignores the `FinancialEventGroupStartedAfter` date filter for Open settlement groups — they are always returned regardless of the date parameter. This means the stream may return groups older than the bookmark on incremental syncs. This is expected behavior; the data is merged/upserted downstream.
+- **Start date clamping:** When no bookmark exists, the tap falls back to the `start_date` config. For the `financial_event_groups` stream, the start date is clamped to 18 months ago. The Amazon docs state that requesting data beyond 2 years should return an empty response ([ref](https://developer-docs.amazon.com/sp-api/reference/listfinancialeventsbygroupid)), but in practice the API throws a `SellingApiBadRequestException` instead.
 
 ### Source Authentication and Authorization
 
