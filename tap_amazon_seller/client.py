@@ -4,7 +4,7 @@
 from typing import Any, List, Optional, cast
 
 from singer_sdk.streams import Stream
-from sp_api.base.exceptions import SellingApiForbiddenException
+from sp_api.base.exceptions import SellingApiForbiddenException, SellingApiBadRequestException
 from sp_api.api import (
     Finances,
     Inventories,
@@ -36,6 +36,11 @@ ROOT_DIR = os.environ.get("ROOT_DIR", ".")
 def _giveup_on_forbidden(e):
     """Give up retrying if the exception is a SellingApiForbiddenException."""
     return isinstance(e, SellingApiForbiddenException)
+
+
+def _giveup_on_forbidden_or_bad_request(e):
+    """Give up retrying on Forbidden or BadRequest (e.g. data retention exceeded)."""
+    return isinstance(e, (SellingApiForbiddenException, SellingApiBadRequestException))
 
 
 def _find_in_partitions_list(

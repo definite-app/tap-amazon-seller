@@ -6,7 +6,7 @@ import backoff
 from singer_sdk import typing as th
 from sp_api.util import load_all_pages
 
-from tap_amazon_seller.client import AmazonSellerStream, _giveup_on_forbidden
+from tap_amazon_seller.client import AmazonSellerStream, _giveup_on_forbidden, _giveup_on_forbidden_or_bad_request
 from tap_amazon_seller.utils import InvalidResponse, timeout
 from sp_api.base.exceptions import SellingApiServerException,SellingApiNotFoundException, SellingApiBadRequestException
 from dateutil.relativedelta import relativedelta
@@ -666,14 +666,9 @@ class FinancialEventGroupsStream(AmazonSellerStream):
         marketplace_id = context.get("marketplace_id")
         finance = self.get_sp_finance(marketplace_id)
 
-        start_date = self.get_starting_timestamp(context)
+        start_date = self.get_starting_timestamp(context) # will default to start_date in config, if not set, will default to 18 months ago
         if start_date is None:
             start_date = datetime.utcnow() - relativedelta(months=18)
-        # The API only supports the last 2 years of data; clamp to 18 months
-        # to avoid SellingApiBadRequestException for older start dates.
-        earliest_allowed = datetime.utcnow() - relativedelta(months=18)
-        if start_date.replace(tzinfo=None) < earliest_allowed:
-            start_date = earliest_allowed
         start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
 
         self.logger.info(
@@ -856,7 +851,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
-        giveup=_giveup_on_forbidden,
+        giveup=_giveup_on_forbidden_or_bad_request,
     )
     @timeout(15)
     def _fetch_financial_events_page(self, finance, group_id, **kwargs):
@@ -873,9 +868,15 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
 
         aggregated_events = {}
 
-        response = self._fetch_financial_events_page(
-            finance, group_id, MaxResultsPerPage=100
-        )
+        try:
+            response = self._fetch_financial_events_page(
+                finance, group_id, MaxResultsPerPage=100
+            )
+        except SellingApiBadRequestException as e:
+            self.logger.warning(
+                f"Skipping group {group_id}: {e}"
+            )
+            return
 
         while True:
             financial_events = response.payload.get("FinancialEvents", {})
