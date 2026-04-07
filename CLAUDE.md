@@ -54,6 +54,11 @@ tap_amazon_seller/
 
 ## Known SP-API Quirks
 - `listFinancialEventGroups`: The `FinancialEventGroupStartedAfter` date filter only applies to Closed groups. Open groups are always returned regardless of the date filter. This means the `financial_event_groups` stream may return groups older than the bookmark on every sync, which is expected — data is merged downstream.
+- `listFinancialEventGroups`: The Amazon docs state that requesting data spanning more than 2 years should return an empty response, but in practice the API throws a `SellingApiBadRequestException` ("data requested exceeds data retention period") instead. The `FinancialEventGroupsStream` clamps the start date to 18 months ago to avoid this.
+
+## Incremental Sync / start_date
+- When no bookmark exists (first sync or full refresh), the Singer SDK falls back to the `start_date` config from `meltano.yml`. If `start_date` is also not set, streams default to their own hardcoded fallback.
+- For `financial_event_groups`, the start date is clamped to 18 months ago regardless of the `start_date` config value, due to the API behavior above.
 
 ## Code Style
 - Black formatting (88 char line limit)

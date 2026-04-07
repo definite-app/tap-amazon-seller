@@ -668,7 +668,12 @@ class FinancialEventGroupsStream(AmazonSellerStream):
 
         start_date = self.get_starting_timestamp(context)
         if start_date is None:
-            start_date = datetime.utcnow() - relativedelta(months=12)
+            start_date = datetime.utcnow() - relativedelta(months=18)
+        # The API only supports the last 2 years of data; clamp to 18 months
+        # to avoid SellingApiBadRequestException for older start dates.
+        earliest_allowed = datetime.utcnow() - relativedelta(months=18)
+        if start_date.replace(tzinfo=None) < earliest_allowed:
+            start_date = earliest_allowed
         start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
 
         self.logger.info(
