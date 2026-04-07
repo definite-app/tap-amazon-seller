@@ -32,7 +32,7 @@ pipx install tap-amazon-seller
 ### Known API Behavior
 
 - **`financial_event_groups` stream:** The Amazon SP-API `listFinancialEventGroups` endpoint ignores the `FinancialEventGroupStartedAfter` date filter for Open settlement groups — they are always returned regardless of the date parameter. This means the stream may return groups older than the bookmark on incremental syncs. This is expected behavior; the data is merged/upserted downstream.
-- **Start date:** When no bookmark exists, the tap falls back to the `start_date` config. The Amazon docs state that requesting data beyond 2 years should return an empty response ([ref](https://developer-docs.amazon.com/sp-api/reference/listfinancialeventsbygroupid)), but in practice the API throws a `SellingApiBadRequestException` instead. In the event that `SellingApiBadRequestException` is thrown, we catch it in `settlement_financial_events` stream and skip it.
+- **`settlement_financial_events` stream:** The API enforces a ~2-year data retention period for `listFinancialEventsByGroupId`. Because the parent stream returns Open groups (and occasionally Closed groups) regardless of the date filter, some groups may be older than the retention window. The child stream skips groups older than 2 years before making the API call, avoiding unnecessary requests and `SellingApiBadRequestException` errors.
 
 ### Source Authentication and Authorization
 
