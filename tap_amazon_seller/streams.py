@@ -1,12 +1,12 @@
 """Stream type classes for tap-amazon-seller."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Optional
 
 import backoff
 from singer_sdk import typing as th
 from sp_api.util import load_all_pages
 
-from tap_amazon_seller.client import AmazonSellerStream, _giveup_on_forbidden, _giveup_on_forbidden_or_bad_request
+from tap_amazon_seller.client import AmazonSellerStream, _giveup_on_forbidden
 from tap_amazon_seller.utils import InvalidResponse, timeout
 from sp_api.base.exceptions import SellingApiServerException,SellingApiNotFoundException, SellingApiBadRequestException
 from dateutil.relativedelta import relativedelta
@@ -648,6 +648,7 @@ class FinancialEventGroupsStream(AmazonSellerStream):
     def get_child_context(self, record: dict, context: Optional[dict]) -> dict:
         return {
             "FinancialEventGroupId": record["FinancialEventGroupId"],
+            "FinancialEventGroupStart": record.get("FinancialEventGroupStart"),
             "marketplace_id": context.get("marketplace_id"),
         }
 
@@ -851,7 +852,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
-        giveup=_giveup_on_forbidden_or_bad_request,
+        giveup=_giveup_on_forbidden,
     )
     @timeout(15)
     def _fetch_financial_events_page(self, finance, group_id, **kwargs):
@@ -860,6 +861,24 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         group_id = context.get("FinancialEventGroupId")
         marketplace_id = context.get("marketplace_id")
+        group_start = context.get("FinancialEventGroupStart")
+
+        # Skip groups older than ~2 years to avoid SellingApiBadRequestException
+        if group_start:
+            try:
+                start_dt = datetime.fromisoformat(
+                    group_start.replace("Z", "+00:00")
+                )
+                age = datetime.now(timezone.utc) - start_dt
+                if age.days > 729:
+                    self.logger.warning(
+                        f"Skipping group {group_id} (started {group_start},"
+                        f" older than 2 years)"
+                    )
+                    return
+            except (ValueError, TypeError):
+                pass
+
         finance = self.get_sp_finance(marketplace_id)
 
         self.logger.info(
@@ -868,15 +887,9 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
 
         aggregated_events = {}
 
-        try:
-            response = self._fetch_financial_events_page(
-                finance, group_id, MaxResultsPerPage=100
-            )
-        except SellingApiBadRequestException as e:
-            self.logger.warning(
-                f"Skipping group {group_id}: {e}"
-            )
-            return
+        response = self._fetch_financial_events_page(
+            finance, group_id, MaxResultsPerPage=100
+        )
 
         while True:
             financial_events = response.payload.get("FinancialEvents", {})
