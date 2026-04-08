@@ -667,9 +667,13 @@ class FinancialEventGroupsStream(AmazonSellerStream):
         marketplace_id = context.get("marketplace_id")
         finance = self.get_sp_finance(marketplace_id)
 
-        start_date = self.get_starting_timestamp(context) # will default to start_date in config, if not set, will default to 18 months ago
-        if start_date is None:
-            start_date = datetime.utcnow() - relativedelta(months=18)
+        max_lookback = datetime.now(timezone.utc) - timedelta(days=729)
+        start_date = self.get_starting_timestamp(context)
+        if start_date is None or start_date < max_lookback:
+            self.logger.warning(
+                f"Start date is older than 2 years, setting to max lookback date: {max_lookback} for financial_event_groups stream"
+            )
+            start_date = max_lookback
         start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
 
         self.logger.info(
