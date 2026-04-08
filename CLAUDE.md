@@ -59,7 +59,7 @@ tap_amazon_seller/
 
 ## Incremental Sync / start_date
 - When no bookmark exists (first sync or full refresh), the Singer SDK falls back to the `start_date` config from `meltano.yml`. If `start_date` is also not set, streams default to their own hardcoded fallback.
-- For `financial_event_groups`, the fallback start date is 18 months ago. The API always returns Open groups regardless of date filter, so old Open groups may be passed to the child `settlement_financial_events` stream — they are skipped if older than 2 years.
+- For `financial_event_groups`, the start date is clamped to 729 days ago (just under 2 years) regardless of the `start_date` config value or bookmark, since the API has a ~2-year retention limit and the child `settlement_financial_events` stream cannot retrieve events for older groups. The API always returns Open groups regardless of date filter, so old Open groups may be passed to the child stream — they are skipped if older than 2 years.
 
 ## Code Style
 - Black formatting (88 char line limit)
