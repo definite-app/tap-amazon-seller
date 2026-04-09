@@ -6,7 +6,7 @@ import backoff
 from singer_sdk import typing as th
 from sp_api.util import load_all_pages
 
-from tap_amazon_seller.client import AmazonSellerStream, _giveup_on_forbidden
+from tap_amazon_seller.client import AmazonSellerStream, _giveup_on_forbidden, _giveup_on_forbidden_or_bad_request
 from tap_amazon_seller.utils import InvalidResponse, timeout
 from sp_api.base.exceptions import SellingApiServerException,SellingApiNotFoundException, SellingApiBadRequestException
 from dateutil.relativedelta import relativedelta
@@ -856,7 +856,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
-        giveup=_giveup_on_forbidden,
+        giveup=_giveup_on_forbidden_or_bad_request,
     )
     @timeout(15)
     def _fetch_financial_events_page(self, finance, group_id, **kwargs):
