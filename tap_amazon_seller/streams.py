@@ -657,7 +657,7 @@ class FinancialEventGroupsStream(AmazonSellerStream):
         (Exception),
         max_tries=10,
         factor=3,
-        giveup=_giveup_on_forbidden,
+        giveup=_giveup_on_forbidden_or_bad_request,
     )
     @timeout(15)
     def _fetch_event_groups_page(self, finance, **kwargs):
@@ -669,14 +669,16 @@ class FinancialEventGroupsStream(AmazonSellerStream):
 
         max_lookback = datetime.now(timezone.utc) - timedelta(days=729)
         start_date = self.get_starting_timestamp(context)
+        self.logger.warning(f"Start date from get_starting_timestamp for financial_event_groups stream: {start_date}")
         if start_date is None or start_date < max_lookback:
             self.logger.warning(
                 f"Start date is older than 2 years, setting to max lookback date: {max_lookback} for financial_event_groups stream"
             )
             start_date = max_lookback
+            self.logger.warning(f"Start date set to max lookback date: {max_lookback} for financial_event_groups stream")
         start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%S")
 
-        self.logger.info(
+        self.logger.warning(
             f"Fetching financial event groups for marketplace {marketplace_id} "
             f"starting after {start_date_str}"
         )
