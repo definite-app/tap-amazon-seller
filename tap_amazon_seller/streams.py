@@ -656,7 +656,7 @@ class FinancialEventGroupsStream(AmazonSellerStream):
         backoff.expo,
         (Exception),
         max_tries=10,
-        factor=3,
+        factor=2,
         giveup=_giveup_on_forbidden_or_bad_request,
     )
     @timeout(15)
@@ -683,6 +683,8 @@ class FinancialEventGroupsStream(AmazonSellerStream):
             f"starting after {start_date_str}"
         )
 
+        # Pre-fetch all pages to avoid NextToken TTL expiry during child processing
+        all_groups = []
         response = self._fetch_event_groups_page(
             finance,
             FinancialEventGroupStartedAfter=start_date_str,
@@ -693,17 +695,21 @@ class FinancialEventGroupsStream(AmazonSellerStream):
             groups = response.payload.get("FinancialEventGroupList", [])
             for group in groups:
                 group["marketplace_id"] = marketplace_id
-                yield group
+                all_groups.append(group)
 
             next_token = response.next_token
             if not next_token:
                 break
-
             response = self._fetch_event_groups_page(
                 finance,
                 NextToken=next_token,
                 MaxResultsPerPage=100,
             )
+
+        self.logger.warning(
+            f"Fetched {len(all_groups)} financial event groups for marketplace {marketplace_id}"
+        )
+        yield from all_groups
 
 
 class SettlementFinancialEventsStream(AmazonSellerStream):
@@ -857,7 +863,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
         backoff.expo,
         (Exception),
         max_tries=10,
-        factor=3,
+        factor=2,
         giveup=_giveup_on_forbidden_or_bad_request,
     )
     @timeout(15)
@@ -893,6 +899,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
 
         aggregated_events = {}
 
+        time.sleep(2)  # Proactive rate limiting: 0.5 req/s budget
         response = self._fetch_financial_events_page(
             finance, group_id, MaxResultsPerPage=100
         )
@@ -910,6 +917,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
             if not next_token:
                 break
 
+            time.sleep(2)  # Proactive rate limiting: 0.5 req/s budget
             response = self._fetch_financial_events_page(
                 finance, group_id, NextToken=next_token, MaxResultsPerPage=100
             )
