@@ -656,7 +656,7 @@ class FinancialEventGroupsStream(AmazonSellerStream):
         backoff.expo,
         (Exception),
         max_tries=10,
-        factor=3,
+        factor=2,
         giveup=_giveup_on_forbidden_or_bad_request,
     )
     @timeout(15)
@@ -857,7 +857,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
         backoff.expo,
         (Exception),
         max_tries=10,
-        factor=3,
+        factor=2,
         giveup=_giveup_on_forbidden_or_bad_request,
     )
     @timeout(15)
@@ -893,6 +893,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
 
         aggregated_events = {}
 
+        time.sleep(2)  # Proactive rate limiting: 0.5 req/s budget
         response = self._fetch_financial_events_page(
             finance, group_id, MaxResultsPerPage=100
         )
@@ -910,6 +911,7 @@ class SettlementFinancialEventsStream(AmazonSellerStream):
             if not next_token:
                 break
 
+            time.sleep(2)  # Proactive rate limiting: 0.5 req/s budget
             response = self._fetch_financial_events_page(
                 finance, group_id, NextToken=next_token, MaxResultsPerPage=100
             )
