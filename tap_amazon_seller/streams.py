@@ -683,6 +683,8 @@ class FinancialEventGroupsStream(AmazonSellerStream):
             f"starting after {start_date_str}"
         )
 
+        # Pre-fetch all pages to avoid NextToken TTL expiry during child processing
+        all_groups = []
         response = self._fetch_event_groups_page(
             finance,
             FinancialEventGroupStartedAfter=start_date_str,
@@ -693,17 +695,21 @@ class FinancialEventGroupsStream(AmazonSellerStream):
             groups = response.payload.get("FinancialEventGroupList", [])
             for group in groups:
                 group["marketplace_id"] = marketplace_id
-                yield group
+                all_groups.append(group)
 
             next_token = response.next_token
             if not next_token:
                 break
-
             response = self._fetch_event_groups_page(
                 finance,
                 NextToken=next_token,
                 MaxResultsPerPage=100,
             )
+
+        self.logger.warning(
+            f"Fetched {len(all_groups)} financial event groups for marketplace {marketplace_id}"
+        )
+        yield from all_groups
 
 
 class SettlementFinancialEventsStream(AmazonSellerStream):
