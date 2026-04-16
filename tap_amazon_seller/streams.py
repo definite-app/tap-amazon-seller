@@ -2054,6 +2054,7 @@ class ProductDetailsV2Stream(AmazonSellerStream):
 class AWDInventoryStream(AmazonSellerStream):
     """AWD (Amazon Warehousing and Distribution) Inventory stream."""
     # Note: AWD is only available for the US marketplace
+    next_token = None
     name = "awd_inventory"
     primary_keys = ["sku"]
     replication_key = None
@@ -2062,7 +2063,7 @@ class AWDInventoryStream(AmazonSellerStream):
         th.Property("sku", th.StringType),
         th.Property("totalInboundQuantity", th.IntegerType),
         th.Property("totalOnhandQuantity", th.IntegerType),
-        th.Property("inventoryDetails", 
+        th.Property("inventoryDetails",
             th.ObjectType(
                 th.Property("replenishmentQuantity", th.IntegerType),
                 th.Property("availableDistributableQuantity", th.IntegerType),
@@ -2071,6 +2072,7 @@ class AWDInventoryStream(AmazonSellerStream):
         ),
     ).to_dict()
 
+    @load_all_pages(next_token_param="nextToken")
     @backoff.on_exception(
         backoff.expo,
         (Exception),
@@ -2079,6 +2081,30 @@ class AWDInventoryStream(AmazonSellerStream):
         giveup=_giveup_on_forbidden,
     )
     @timeout(15)
+    def load_all_items(self, **kwargs):
+        """Fetch a single page of AWD inventory.
+
+        The ``@load_all_pages`` decorator re-invokes this per page, so each
+        call is a fresh function invocation protected by ``@backoff``.
+        """
+        awd = self.get_sp_awd()
+        if self.next_token is not None:
+            kwargs.update({"nextToken": self.next_token})
+        return awd.list_inventory(**kwargs)
+
+    def load_item_page(self, **kwargs):
+        """Generator yielding each page's payload."""
+        for page in self.load_all_items(**kwargs):
+            self.next_token = page.next_token
+            yield page.payload
+
+    @backoff.on_exception(
+        backoff.expo,
+        (Exception),
+        max_tries=10,
+        factor=3,
+        giveup=_giveup_on_forbidden,
+    )
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         """Get AWD inventory records.
 
@@ -2088,24 +2114,11 @@ class AWDInventoryStream(AmazonSellerStream):
         Yields:
             AWD inventory records.
         """
-        awd = self.get_sp_awd()
-    
-
-        response = awd.list_inventory(details="SHOW")
-        inventory_items = response.payload.get("inventory")
-
-        # Handle pagination if there are more results
-        while True:
-            for item in inventory_items:
+        for payload in self.load_item_page(details="SHOW"):
+            for item in payload.get("inventory", []):
                 yield item
 
-            next_token = response.next_token
-            if not next_token:
-                break
 
-            response = awd.list_inventory(details="SHOW", nextToken=next_token)
-            inventory_items = response.payload.get("inventory", [])
-            
 class AccountStream(AmazonSellerStream):
     """
     Stream to fetch seller account information using:
